@@ -26,7 +26,7 @@ function search($target_url,&$pagesCounted,&$date){
         if (preg_match($pattern, $html)){
                 echo "<b>Match Found!</b><br />";
                 //write URL to database
-                $con=mysqli_connect("localhost","root","webcrawler","crawlerfinds");
+                $con=mysqli_connect("localhost","db_user","database_name","password");
                 // Check connection
                 if (mysqli_connect_errno())
                 {
