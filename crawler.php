@@ -11,61 +11,69 @@ $pagesCounted = 0;
 $date = date("Y-m-d");
 $target_url = $_POST['url'];
 $searched_urls = array();
-
+$not_yet_searched_urls = array($target_url);
 echo "Results:<p>";
-//First Function call
 echo $date . " <br />";
-search($target_url, $pagesCounted);	
 
-function search($target_url,&$pagesCounted,&$date){
-	static $searched_urls;
+while(count($not_yet_searched_urls) > 0 && $pagesCounted < 25)
+{
+	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date);
+	$target_url = array_shift($not_yet_searched_urls);
+}
+
+function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date){
+
 	$searched_urls[] = $target_url;
 	echo "<a href=\"". $target_url."\">". $target_url ."</a>  ";
 	$html = new simple_html_dom();
 	$html -> load_file($target_url);
-	$run_limit = 10;
+	
 	$pattern = '/(.*sustain.*)|(.*environmental.*)/i';
 
-        if (preg_match($pattern, $html)){
+        if (preg_match($pattern, $html))
+		{
                 echo "<b>Match Found!</b><br />";
                 /*write URL to database
                 $con=mysqli_connect("localhost","db_user","database_name","password");
                 // Check connection
                 if (mysqli_connect_errno())
                 {
-                echo "Failed to connect to MySQL: " . mysqli_connect_error();
+					echo "Failed to connect to MySQL: " . mysqli_connect_error();
                 }
-
                 mysqli_query($con,"INSERT INTO results (id, url, date) VALUES (NULL, $target_url , $date)");
-
                 mysqli_close($con);
 				*/
-	}else{
+		}else{
         	//no action
-		echo "<br />";
-	}
+			echo "<br />";
+		}
 	
 	$pagesCounted++;
-	if ($pagesCounted > $run_limit){
-                return;
-        }
+	
 
+	//define regex for edu links
 	$edu = '/(?<=http).*\.edu.*/i';
 	foreach($html -> find('a') as $link)
 	{
-		if(preg_match($edu, $link) && !already_checked($link, $searched_urls))	{
-			search($link -> href, $pagesCounted, $date);
+		if(preg_match($edu, $link) && !already_checked($link, $searched_urls))
+		{
+			//add qualifying urls to the search list
+			$not_yet_searched_urls[]=$link -> href;
 		}
 	}
-//	print_r($searched_urls);
 }
-function already_checked($reference,$array){
-      foreach($array as $ref){
-        if (strstr($reference,$ref)){         
-          return true;
-        }
+
+function already_checked($reference,$array)
+{
+      foreach($array as $ref)
+	  {
+			if (strstr($reference,$ref))
+			{         
+				return true;
+			}
       }
       return false;
-    } 
+} 
+
 echo "<b>Pages counted: ". $pagesCounted ."</b>";
 ?>
