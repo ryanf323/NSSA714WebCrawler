@@ -6,25 +6,30 @@
 </head>
 
 <?php
+ini_set('max_execution_time', 1800); //30 minutes
+$time_start = microtime(true); 
 include_once('simple_html_dom.php');
 $pagesCounted = 0;
 $date = date("Y-m-d");
 $target_url = $_POST['url'];
+$domain_pattern = '/\w+.edu/i';
+preg_match($domain_pattern, $target_url, $matches);
+$domain = $matches[0];
+$match_count = 0;
 $searched_urls = array();
 $not_yet_searched_urls = array($target_url);
-echo "Results:<p>";
+echo "The " . $domain . " Search Results:<p>";
 echo $date . " <br />";
 
-while(count($not_yet_searched_urls) > 0 && $pagesCounted < 25)
+while(count($not_yet_searched_urls) > 0 && $pagesCounted < 100 )
 {
-	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date);
+	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count);
 	$target_url = array_shift($not_yet_searched_urls);
 }
 
-function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date){
+function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count){
 
 	$searched_urls[] = $target_url;
-	echo "<a href=\"". $target_url."\">". $target_url ."</a>  ";
 	$html = new simple_html_dom();
 	$html -> load_file($target_url);
 	
@@ -32,7 +37,7 @@ function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCoun
 
         if (preg_match($pattern, $html))
 		{
-                echo "<b>Match Found!</b><br />";
+                echo "<a href=\"". $target_url."\">". $target_url ."</a><br />";
                 /*write URL to database
                 $con=mysqli_connect("localhost","db_user","database_name","password");
                 // Check connection
@@ -43,22 +48,25 @@ function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCoun
                 mysqli_query($con,"INSERT INTO results (id, url, date) VALUES (NULL, $target_url , $date)");
                 mysqli_close($con);
 				*/
+		$match_count++;
 		}else{
         	//no action
-			echo "<br />";
 		}
 	
 	$pagesCounted++;
 	
 
 	//define regex for edu links
-	$edu = '/(?<=http).*\.edu.*/i';
+	$edu = '/(?<=http).*' . $domain . '.*/i';
 	foreach($html -> find('a') as $link)
 	{
+		$link = $link -> href;
 		if(preg_match($edu, $link) && !already_checked($link, $searched_urls))
 		{
+			//If URL has a / on the end, remove it
+			
 			//add qualifying urls to the search list
-			$not_yet_searched_urls[]=$link -> href;
+			$not_yet_searched_urls[]=$link;
 		}
 	}
 }
@@ -75,5 +83,11 @@ function already_checked($reference,$array)
       return false;
 } 
 
-echo "<b>Pages counted: ". $pagesCounted ."</b>";
+echo "<b>Pages counted: ". $pagesCounted ."<br />";
+echo "Pages left in queue: " . count($not_yet_searched_urls) . "<br />";
+echo "Number of matches: " . $match_count . "</b><br />";
+
+$time_end = microtime(true);
+$execution_time = ($time_end - $time_start);
+echo '<b>Total Execution Time:</b> '.(int)($execution_time/60) .' minutes and '.($execution_time%60).' seconds';
 ?>
