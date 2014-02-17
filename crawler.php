@@ -1,8 +1,9 @@
 <?php
 //Ryan Flynn
+include_once('simple_html_dom.php');
+$execution_limit = 100;
 ini_set('max_execution_time', 1800); //30 minutes
 $time_start = microtime(true); 
-include_once('simple_html_dom.php');
 $pagesCounted = 0;
 $date = date("Y-m-d");
 
@@ -22,12 +23,17 @@ else {
 	<title>Web Crawler - Results</title>
 	</head>';
 }
+
+//Extract domain form provided url
 $domain_pattern = '/\w+.edu/i';
 preg_match($domain_pattern, $target_url, $matches);
 $domain = $matches[0];
+
 $match_count = 0;
 $searched_urls = array();
 $not_yet_searched_urls = array($target_url);
+
+//Begin output
 if ($output_type == "html")
 {
 	echo "The <b>" . $domain . "</b> Search Results:<p>";
@@ -37,12 +43,14 @@ if ($output_type == "html")
 	echo $date . "\n";
 }
 
-while(count($not_yet_searched_urls) > 0 && $pagesCounted < 100)
+//Main program loop
+while(count($not_yet_searched_urls) > 0 && $pagesCounted < $execution_limit)
 {
 	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count, $output_type);
 	$target_url = array_shift($not_yet_searched_urls);
 }
 
+//Search Function
 function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count, $output_type){
 
 	$searched_urls[] = $target_url;
