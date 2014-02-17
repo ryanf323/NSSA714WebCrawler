@@ -10,22 +10,25 @@ include_once('simple_html_dom.php');
 $pagesCounted = 0;
 $date = date("Y-m-d");
 $target_url = $_POST['url'];
+$searched_urls = array();
 
 echo "Results:<p>";
 //First Function call
 echo $date . " <br />";
-search($target_url, $pagesCounted);
+search($target_url, $pagesCounted);	
 
 function search($target_url,&$pagesCounted,&$date){
-        echo $target_url."   ";
-        $html = new simple_html_dom();
-        $html -> load_file($target_url);
-		$run_limit = 5;
-        $pattern = '/(.*sustain.*)|(.*environmental.*)/i';
+	static $searched_urls;
+	$searched_urls[] = $target_url;
+	echo "<a href=\"". $target_url."\">". $target_url ."</a>  ";
+	$html = new simple_html_dom();
+	$html -> load_file($target_url);
+	$run_limit = 10;
+	$pattern = '/(.*sustain.*)|(.*environmental.*)/i';
 
         if (preg_match($pattern, $html)){
                 echo "<b>Match Found!</b><br />";
-                //write URL to database
+                /*write URL to database
                 $con=mysqli_connect("localhost","db_user","database_name","password");
                 // Check connection
                 if (mysqli_connect_errno())
@@ -36,23 +39,33 @@ function search($target_url,&$pagesCounted,&$date){
                 mysqli_query($con,"INSERT INTO results (id, url, date) VALUES (NULL, $target_url , $date)");
 
                 mysqli_close($con);
-        }else{
-                //no action
-                echo "<br />";
-        }
-		$pagesCounted++;
-        if ($pagesCounted > $run_limit){
+				*/
+	}else{
+        	//no action
+		echo "<br />";
+	}
+	
+	$pagesCounted++;
+	if ($pagesCounted > $run_limit){
                 return;
         }
 
-        $edu = '/(?<=http).*\.edu.*/i';
-        foreach($html -> find('a') as $link)
-        {
-                if(preg_match($edu, $link)){
-                        search($link -> href, $pagesCounted, $date);
-                }
-        }
+	$edu = '/(?<=http).*\.edu.*/i';
+	foreach($html -> find('a') as $link)
+	{
+		if(preg_match($edu, $link) && !already_checked($link, $searched_urls))	{
+			search($link -> href, $pagesCounted, $date);
+		}
+	}
+//	print_r($searched_urls);
 }
-
-	echo "<b>Pages counted: ". $pagesCounted ."</b>";
+function already_checked($reference,$array){
+      foreach($array as $ref){
+        if (strstr($reference,$ref)){         
+          return true;
+        }
+      }
+      return false;
+    } 
+echo "<b>Pages counted: ". $pagesCounted ."</b>";
 ?>
