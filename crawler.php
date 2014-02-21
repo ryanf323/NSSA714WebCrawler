@@ -1,9 +1,9 @@
-<?php
+	<?php
 //Ryan Flynn
 include_once('simple_html_dom.php');
 
 //Initialize Variables
-$execution_limit = 1500;
+$execution_limit = 500;
 $time_start = microtime(true); 
 $pagesCounted = 0;
 $date = date("Y-m-d");
@@ -33,10 +33,8 @@ echo $date . "\n";
 
 //-----Main program loop-----
 while(count($not_yet_searched_urls) > 0 && $pagesCounted < $execution_limit){
-	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count, $output_type);
-	$target_url = array_shift($not_yet_searched_urls);
-	
-	//Debugging Output
+	search(&$target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count);
+	$target_url = array_shift($not_yet_searched_urls);	
 	echo "Target URL: " . $target_url . "\n";
 	echo "Queue: ". count($not_yet_searched_urls). " Pages Loaded: ". $pagesCounted ."\n";	
 }
@@ -51,9 +49,12 @@ echo 'Total Execution Time: '.(int)($execution_time/60) .' minutes and '.($execu
 
 
 //-----Search Function-----//
-function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count, $output_type){
+function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCounted, $date, $domain, &$match_count){
+	
+    	$target_url = follow_url($target_url);	
 	$searched_urls[] = $target_url;
-	$html = file_get_html($target_url);
+
+        $html = file_get_html($target_url);
 	echo "Memory Useage: ".number_format((memory_get_usage()/1000000),2,'.','') . " MB \n\n";
 	
 	//sometimes pages fail to load, if so exit function
@@ -64,13 +65,6 @@ function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCoun
 	
 	$pattern = '/(.*sustainability.*)|(.*environmental.*)/i';
     if (preg_match($pattern, $html)){
-       	
-       	if ($output_type == "html"){
-			echo "<a href=\"". $target_url."\">". $target_url ."</a><br />";
-		}else{
-			//echo $target_url . "\n";
-		}
-	
 		//write URL to database
 		$mysqli = new mysqli("localhost","root","newpwd","crawlerfinds");
 		$target_url = $mysqli->real_escape_string($target_url);
@@ -85,7 +79,6 @@ function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCoun
 	}
 	
 	$pagesCounted++;
-
 	//define regex for domain links
 	$edu = '/(?<=http).*' . $domain . '.*/i';
 	
@@ -93,8 +86,8 @@ function search($target_url,&$searched_urls,&$not_yet_searched_urls, &$pagesCoun
 		
 		foreach($html->find('a') as $link){
 			$url = $link -> href;
-			
-			if(preg_match($edu, $url) && !already_checked($url, $searched_urls)){
+			$url = follow_url($url);
+			if(preg_match($edu, $url) && already_checked($url,$not_yet_searched_urls) && already_checked($url, $searched_urls)){
 				//add qualifying urls to the search list
 				$not_yet_searched_urls[]=$url;
 			}
@@ -115,4 +108,19 @@ function already_checked($reference,$array){
     return false;
 } 
 
+function follow_url($url){
+	//Use curl to follow redirects and find effective URL
+        $ch = curl_init();
+        $timeout = 0;
+        curl_setopt ($ch, CURLOPT_URL, $url);
+        curl_setopt ($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_HEADER, TRUE);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        //$data = curl_exec($ch);
+        $url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+
+	return $url;
+}
 ?>
